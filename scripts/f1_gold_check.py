@@ -3,6 +3,21 @@
 import argparse, json, pathlib, random, re, shutil, subprocess, tarfile, tempfile
 import xml.etree.ElementTree as ET
 
+def norm_patch(txt: str) -> str:
+    txt = (txt or "").replace("\r\n", "\n")
+    return txt if txt.endswith("\n") else txt + "\n"
+
+def apply_patch_file(patch_path: pathlib.Path, cwd: pathlib.Path) -> bool:
+    for cmd in (
+        ["git", "apply", str(patch_path)],
+        ["git", "apply", "--recount", str(patch_path)],
+        ["patch", "-p1", "--batch", "--forward", "-i", str(patch_path)],
+    ):
+        r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+        if r.returncode == 0:
+            return True
+    return False
+
 def extract_test_targets(test_patch: str):
     files = re.findall(r"^\+\+\+ b/(\S+)", test_patch, flags=re.M)
     target_files = sorted({b for b in files if b.endswith(".py")})
@@ -47,9 +62,8 @@ def verify_single_task(task: dict, snap_path: pathlib.Path, timeout_s: int = 180
             tf.extractall(ws_gold, filter="data")
 
         # 1) Kode asli + test_patch WAJIB gagal (FAIL_TO_PASS)
-        (tmp_p / "test.patch").write_text(task["test_patch"], encoding="utf-8")
-        ap_t = subprocess.run(["git", "apply", str(tmp_p / "test.patch")], cwd=ws_orig, capture_output=True, text=True)
-        if ap_t.returncode != 0:
+        (tmp_p / "test.patch").write_text(norm_patch(task["test_patch"]), encoding="utf-8")
+        if not apply_patch_file(tmp_p / "test.patch", ws_orig):
             return False, "test_patch_apply_failed_orig"
 
         cmd_base = [
@@ -62,10 +76,9 @@ def verify_single_task(task: dict, snap_path: pathlib.Path, timeout_s: int = 180
             return False, "orig_passed_unexpectedly"
 
         # 2) Kode + reference patch + test_patch WAJIB lulus 2/2 tanpa skipped
-        (tmp_p / "gold.patch").write_text(task["patch"], encoding="utf-8")
+        (tmp_p / "gold.patch").write_text(norm_patch(task["patch"]), encoding="utf-8")
         for p_file in (tmp_p / "gold.patch", tmp_p / "test.patch"):
-            ap = subprocess.run(["git", "apply", str(p_file)], cwd=ws_gold, capture_output=True, text=True)
-            if ap.returncode != 0:
+            if not apply_patch_file(p_file, ws_gold):
                 return False, f"apply_failed_{p_file.name}"
 
         for run_idx in (1, 2):
