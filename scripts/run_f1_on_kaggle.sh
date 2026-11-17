@@ -1,12 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TASKS_FILE="${TASKS_FILE:-/kaggle/input/gemma-4-developer-agent/tasks.jsonl}"
-SNAPSHOTS_DIR="${SNAPSHOTS_DIR:-/kaggle/input/gemma-4-developer-agent/snapshots}"
-OUT_DIR="${OUT_DIR:-/kaggle/working/f1_artifacts}"
-mkdir -p "$OUT_DIR"
+if [ ! -d "/kaggle/working" ]; then
+  echo "ERROR: Direktori /kaggle/working tidak ditemukan. Jalankan skrip ini di Notebook Kaggle (GPU L4 x4), bukan di VPS."
+  exit 1
+fi
 
-# Auto-deteksi sandbox: gunakan docker jika daemon aktif, selain itu subprocess
+TASKS_FILE="${TASKS_FILE:-$(find /kaggle/input -name "tasks.jsonl" 2>/dev/null | head -n 1)}"
+SNAPSHOTS_DIR="${SNAPSHOTS_DIR:-$(find /kaggle/input -maxdepth 4 -type d -name "snapshots" 2>/dev/null | head -n 1)}"
+OUT_DIR="${OUT_DIR:-/kaggle/working/f1_artifacts}"
+
+if [ -z "$TASKS_FILE" ] || [ -z "$SNAPSHOTS_DIR" ]; then
+  echo "ERROR: tasks.jsonl atau folder snapshots tidak ditemukan di /kaggle/input. Pastikan data kompetisi sudah dilampirkan ke notebook."
+  find /kaggle/input -maxdepth 3 2>/dev/null || true
+  exit 1
+fi
+
+mkdir -p "$OUT_DIR"
+echo "TASKS_FILE=$TASKS_FILE"
+echo "SNAPSHOTS_DIR=$SNAPSHOTS_DIR"
+
 if [ -n "${SANDBOX_MODE:-}" ]; then
   SBX="$SANDBOX_MODE"
 elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
