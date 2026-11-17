@@ -4,8 +4,8 @@ import argparse, json, pathlib, random, re, shutil, subprocess, tarfile, tempfil
 import xml.etree.ElementTree as ET
 
 def extract_test_targets(test_patch: str):
-    files = re.findall(r"^diff --git a/(\S+) b/(\S+)", test_patch, flags=re.M)
-    target_files = sorted({b for _, b in files if b.endswith(".py")})
+    files = re.findall(r"^\+\+\+ b/(\S+)", test_patch, flags=re.M)
+    target_files = sorted({b for b in files if b.endswith(".py")})
     test_funcs = sorted(set(re.findall(r"^\+\s*(?:async\s+)?def\s+(test_\w+)\s*\(", test_patch, flags=re.M)))
     return target_files, test_funcs
 
