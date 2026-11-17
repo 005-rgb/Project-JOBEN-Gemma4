@@ -1,0 +1,24 @@
+# Aset kompetisi & lingkungan lokal (DILARANG PUSH)
+data/
+docker/
+sandbox/
+sample_submission/
+tasks.jsonl
+HARNESS_README.md
+*.jsonl
+.venv/
+*.zip
+*.tar.gz
+*.safetensors
+traces/
+__pycache__/
+.pytest_cache/
+.kaggle/
+# Kredensial
+.env
+*.env
+credentials.json
+kaggle.json
+access_token*
+*.pem
+*.key
